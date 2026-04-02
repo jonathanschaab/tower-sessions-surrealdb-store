@@ -101,10 +101,13 @@ impl<DB: std::fmt::Debug + surrealdb::Connection> SessionStore for SurrealSessio
     async fn load(&self, session_id: &Id) -> Result<Option<Record>> {
         let record: Option<SessionRecord> = self
             .client
-            .query(
+            .query(if cfg!(feature = "surrealdb-nightly") {
+                "select expiry_date, data from type::thing($table, $id)
+where expiry_date > time::unix(time::now())"
+            } else {
                 "select expiry_date, data from type::record($table, $id)
-where expiry_date > time::unix(time::now())",
-            )
+where expiry_date > time::unix(time::now())"
+            })
             .bind(("id", session_id.to_string()))
             .bind(("table", self.session_table.clone()))
             .await
@@ -350,9 +353,12 @@ mod test {
     }
 
     async fn select_session(db: &Surreal<DB>, session: &Record) -> Option<SessionRecord> {
-        db.select((SESSIONS_TABLE, session.id.to_string()))
-            .await
-            .expect("Error retrieving session record")
+        db.select((
+            surrealdb_types::Table::from(SESSIONS_TABLE),
+            session.id.to_string(),
+        ))
+        .await
+        .expect("Error retrieving session record")
     }
 
     fn assert_serialized_eq<T>(v1: T, v2: T, msg: &str)
