@@ -22,7 +22,7 @@ surrealdb = { version = "3.0.5", optional = true, features = ["kv-mem"] }
 surrealdb-types = { version = "3.0.5", optional = true }
 surrealdb-nightly = { version = ">=2, <4", optional = true }
 tower-sessions-core = { version = "0.14.0", features = ["deletion-task"] }
-tracing = "0.1.40"
+tracing = "0.1.44"
 
 [features]
 default = ["surrealdb"]
