@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use surrealdb_types::SurrealValue;
 use surrealdb::Surreal;
+use surrealdb_types::SurrealValue;
 use tower_sessions_core::{
     session::{Id, Record},
     session_store::{Error, Result},
@@ -115,7 +115,8 @@ where expiry_date > time::unix(time::now())",
     }
 
     async fn delete(&self, session_id: &Id) -> Result<()> {
-        let _: Option<SessionRecord> = self.client
+        let _: Option<SessionRecord> = self
+            .client
             .delete((&self.session_table, session_id.to_string()))
             .await
             .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?;
@@ -144,7 +145,9 @@ mod test {
         db.use_db("testing")
             .await
             .expect("Surreal database initialization failure");
-        db.query("DEFINE TABLE sessions SCHEMALESS;").await.expect("Define table failed");
+        db.query("DEFINE TABLE sessions SCHEMALESS;")
+            .await
+            .expect("Define table failed");
         db
     }
 
