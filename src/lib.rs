@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use surrealdb_types::SurrealValue;
 use surrealdb::Surreal;
 use tower_sessions_core::{
     session::{Id, Record},
@@ -12,7 +13,7 @@ use tracing::info;
 compile_error! {"Features 'surrealdb' and 'surrealdb-nightly' must not be enabled at the same time! See the README for details."}
 
 /// Representation of a session in the database.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, SurrealValue, Debug, PartialEq)]
 struct SessionRecord {
     data: Vec<u8>,
     expiry_date: i64,
@@ -63,9 +64,9 @@ impl<DB: std::fmt::Debug + surrealdb::Connection> ExpiredDeletion for SurrealSes
             )
             .bind(("table", self.session_table.clone()))
             .await
-            .map_err(|e| Error::Backend(e.to_string()))?
+            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?
             .check()
-            .map_err(|e| Error::Backend(e.to_string()))?;
+            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?;
         Ok(())
     }
 }
@@ -77,7 +78,7 @@ impl<DB: std::fmt::Debug + surrealdb::Connection> SessionStore for SurrealSessio
             .client
             .select::<Option<SessionRecord>>((self.session_table.clone(), session.id.to_string()))
             .await
-            .map_err(|e| Error::Backend(e.to_string()))?
+            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?
             .is_some()
         {
             session.id = Id::default();
@@ -91,7 +92,7 @@ impl<DB: std::fmt::Debug + surrealdb::Connection> SessionStore for SurrealSessio
             .upsert((self.session_table.clone(), session.id.to_string()))
             .content(SessionRecord::from_session(session)?)
             .await
-            .map_err(|e| Error::Backend(e.to_string()))?
+            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?
             .ok_or(Error::Backend("Session record not saved".to_string()))?;
 
         Ok(())
@@ -101,23 +102,23 @@ impl<DB: std::fmt::Debug + surrealdb::Connection> SessionStore for SurrealSessio
         let record: Option<SessionRecord> = self
             .client
             .query(
-                "select expiry_date, data from type::thing($table, $id)
+                "select expiry_date, data from type::record($table, $id)
 where expiry_date > time::unix(time::now())",
             )
             .bind(("id", session_id.to_string()))
             .bind(("table", self.session_table.clone()))
             .await
-            .map_err(|e| Error::Backend(e.to_string()))?
+            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?
             .take(0)
-            .map_err(|e| Error::Backend(e.to_string()))?;
+            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?;
         record.map(|r| r.to_session()).transpose()
     }
 
     async fn delete(&self, session_id: &Id) -> Result<()> {
-        self.client
-            .delete::<Option<SessionRecord>>((&self.session_table, &session_id.to_string()))
+        let _res: Option<SessionRecord> = self.client
+            .delete((&self.session_table, session_id.to_string()))
             .await
-            .map_err(|e| Error::Backend(e.to_string()))?;
+            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?;
 
         Ok(())
     }
@@ -133,18 +134,17 @@ mod test {
 
     static SESSIONS_TABLE: &str = "sessions";
 
-    type DB = surrealdb::engine::local::Db;
+    type DB = surrealdb::engine::any::Any;
 
     async fn new_db_connection() -> Surreal<DB> {
-        let db = Surreal::new::<surrealdb::engine::local::Mem>(())
-            .await
-            .expect("Surreal initialization failure");
+        let db = surrealdb::engine::any::connect("mem://").await.unwrap();
         db.use_ns("testing")
             .await
             .expect("Surreal namespace initialization failure");
         db.use_db("testing")
             .await
             .expect("Surreal database initialization failure");
+        db.query("DEFINE TABLE sessions SCHEMALESS;").await.expect("Define table failed");
         db
     }
 
