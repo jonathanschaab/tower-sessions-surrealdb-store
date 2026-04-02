@@ -115,7 +115,7 @@ where expiry_date > time::unix(time::now())",
     }
 
     async fn delete(&self, session_id: &Id) -> Result<()> {
-        let _res: Option<SessionRecord> = self.client
+        let _: Option<SessionRecord> = self.client
             .delete((&self.session_table, session_id.to_string()))
             .await
             .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?;
