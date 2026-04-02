@@ -353,12 +353,9 @@ mod test {
     }
 
     async fn select_session(db: &Surreal<DB>, session: &Record) -> Option<SessionRecord> {
-        db.select((
-            surrealdb_types::Table::from(SESSIONS_TABLE),
-            session.id.to_string(),
-        ))
-        .await
-        .expect("Error retrieving session record")
+        db.select((SESSIONS_TABLE, session.id.to_string()))
+            .await
+            .expect("Error retrieving session record")
     }
 
     fn assert_serialized_eq<T>(v1: T, v2: T, msg: &str)
