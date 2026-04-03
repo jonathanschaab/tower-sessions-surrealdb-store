@@ -109,7 +109,10 @@ where expiry_date > time::unix(time::now())"
 where expiry_date > time::unix(time::now())"
             })
             .bind(("id", session_id.to_string()))
-            .bind(("table", surrealdb_types::Table::from(self.session_table.clone())))
+            .bind((
+                "table",
+                surrealdb_types::Table::from(self.session_table.clone()),
+            ))
             .await
             .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?
             .take(0)
