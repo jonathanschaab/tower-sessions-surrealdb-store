@@ -139,7 +139,9 @@ mod test {
     type DB = surrealdb::engine::any::Any;
 
     async fn new_db_connection() -> Surreal<DB> {
-        let db = surrealdb::engine::any::connect("mem://").await.unwrap();
+        let db = surrealdb::engine::any::connect("mem://")
+            .await
+            .expect("Surreal initialization failure");
         db.use_ns("testing")
             .await
             .expect("Surreal namespace initialization failure");
