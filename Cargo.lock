@@ -5506,6 +5506,7 @@ dependencies = [
  "surrealdb",
  "surrealdb-nightly",
  "surrealdb-types",
+ "time",
  "tokio",
  "tokio-test",
  "tower 0.5.3",

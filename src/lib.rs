@@ -101,23 +101,21 @@ impl<DB: std::fmt::Debug + surrealdb::Connection> SessionStore for SurrealSessio
     async fn load(&self, session_id: &Id) -> Result<Option<Record>> {
         let record: Option<SessionRecord> = self
             .client
-            .query(if cfg!(feature = "surrealdb-nightly") {
-                "select expiry_date, data from type::thing($table, $id)
-where expiry_date > time::unix(time::now())"
-            } else {
-                "select expiry_date, data from type::record($table, $id)
-where expiry_date > time::unix(time::now())"
-            })
-            .bind(("id", session_id.to_string()))
-            .bind((
-                "table",
+            .select((
                 surrealdb_types::Table::from(self.session_table.clone()),
+                session_id.to_string(),
             ))
             .await
-            .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?
-            .take(0)
             .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?;
-        record.map(|r| r.to_session()).transpose()
+
+        if let Some(r) = record {
+            let now = time::OffsetDateTime::now_utc().unix_timestamp();
+            if r.expiry_date > now {
+                return Ok(Some(r.to_session()?));
+            }
+        }
+
+        Ok(None)
     }
 
     async fn delete(&self, session_id: &Id) -> Result<()> {
