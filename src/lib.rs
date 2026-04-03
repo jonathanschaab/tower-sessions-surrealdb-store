@@ -101,10 +101,7 @@ impl<DB: std::fmt::Debug + surrealdb::Connection> SessionStore for SurrealSessio
     async fn load(&self, session_id: &Id) -> Result<Option<Record>> {
         let record: Option<SessionRecord> = self
             .client
-            .select((
-                surrealdb_types::Table::from(self.session_table.clone()),
-                session_id.to_string(),
-            ))
+            .select((&self.session_table, session_id.to_string()))
             .await
             .map_err(|e: surrealdb::Error| Error::Backend(e.to_string()))?;
 
@@ -354,12 +351,9 @@ mod test {
     }
 
     async fn select_session(db: &Surreal<DB>, session: &Record) -> Option<SessionRecord> {
-        db.select((
-            surrealdb_types::Table::from(SESSIONS_TABLE),
-            session.id.to_string(),
-        ))
-        .await
-        .expect("Error retrieving session record")
+        db.select((SESSIONS_TABLE, session.id.to_string()))
+            .await
+            .expect("Error retrieving session record")
     }
 
     fn assert_serialized_eq<T>(v1: T, v2: T, msg: &str)
