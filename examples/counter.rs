@@ -20,7 +20,7 @@ struct Counter(usize);
 
 #[tokio::main]
 async fn main() {
-    let db = surrealdb::Surreal::new::<surrealdb::engine::local::Mem>(())
+    let db = surrealdb::engine::any::connect("mem://")
         .await
         .expect("Surreal initialization failure");
     db.use_ns("testing")
